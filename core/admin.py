@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from core.models import Desing, Message, Template, User
+from core.models import Desing, Message, Model, Template, User
 
 
 @admin.register(Desing)
@@ -33,6 +33,15 @@ class MessageAdmin(admin.ModelAdmin):
     search_fields = ('status', 'sent_at')
     list_filter = ('status', 'sent_at')
     ordering = ('status', 'sent_at')
+    list_per_page = 10
+
+
+@admin.register(Model)
+class ModelAdmin(admin.ModelAdmin):
+    list_display = ['created_at', 'name']
+    search_fields = ['created_at', 'name']
+    list_filter = ['created_at']
+    ordering = ['created_at', 'name']
     list_per_page = 10
 
 
