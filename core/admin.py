@@ -6,9 +6,19 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from core import models
+from core.models import Message, User
 
 
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ('status', 'sent_at')
+    search_fields = ('status', 'sent_at')
+    list_filter = ('status', 'sent_at')
+    ordering = ('status', 'sent_at')
+    list_per_page = 10
+
+
+@admin.register(User)
 class UserAdmin(BaseUserAdmin):
     """Define the admin pages for users."""
 
@@ -49,6 +59,3 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
-
-
-admin.site.register(models.User, UserAdmin)
