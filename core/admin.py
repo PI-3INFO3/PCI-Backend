@@ -23,10 +23,12 @@ class UserAdmin(BaseUserAdmin):
     """Define the admin pages for users."""
 
     ordering = ['id']
-    list_display = ['email', 'name']
+    list_display = ['email', 'name', 'user_type', 'is_active', 'created_at']
+    search_fields = ['email', 'name', 'created_at']
+    list_filter = ['is_active', 'is_staff', 'user_type']
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        (_('Personal Info'), {'fields': ('name',)}),
+        (_('Personal Info'), {'fields': ('name', 'user_type')}),
         (
             _('Permissions'),
             {
@@ -37,11 +39,11 @@ class UserAdmin(BaseUserAdmin):
                 )
             },
         ),
-        (_('Important dates'), {'fields': ('last_login',)}),
+        (_('Important dates'), {'fields': ('last_login', 'created_at')}),
         (_('Groups'), {'fields': ('groups',)}),
         (_('User Permissions'), {'fields': ('user_permissions',)}),
     )
-    readonly_fields = ['last_login']
+    readonly_fields = ['last_login', 'created_at']
     add_fieldsets = (
         (
             None,
@@ -52,6 +54,7 @@ class UserAdmin(BaseUserAdmin):
                     'password1',
                     'password2',
                     'name',
+                    'user_type',
                     'is_active',
                     'is_staff',
                     'is_superuser',
