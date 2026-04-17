@@ -11,7 +11,7 @@ class Message(models.Model):
     ]
 
     content = models.TextField()
-    sent_at = models.DateTimeField()
+    sent_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
