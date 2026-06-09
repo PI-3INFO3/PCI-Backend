@@ -27,8 +27,10 @@ class UserSerializer(ModelSerializer):
         required=False,
         write_only=True,
     )
-
-    profile_photo = ImageSerializer(read_only=True)
+    profile_photo = ImageSerializer(
+        required=False,
+        read_only=True
+    )
 
 
 class UserRegistrationSerializer(ModelSerializer):
