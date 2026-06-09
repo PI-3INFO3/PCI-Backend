@@ -10,6 +10,8 @@ from django.contrib.auth.models import (
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from uploader.models import Image
+
 
 class UserManager(BaseUserManager):
     """Manager for users."""
@@ -53,6 +55,14 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=20,
         choices=UserType.choices,
         default=UserType.PERSONAL
+    )
+    profile_photo = models.ForeignKey(
+        Image,
+        related_name='+',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
