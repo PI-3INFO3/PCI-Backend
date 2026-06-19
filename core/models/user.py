@@ -10,6 +10,8 @@ from django.contrib.auth.models import (
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from uploader.models import Image
+
 
 class UserManager(BaseUserManager):
     """Manager for users."""
@@ -40,8 +42,31 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     """User model in the system."""
 
-    email = models.EmailField(max_length=255, unique=True, verbose_name=_('email'), help_text=_('Email'))
-    name = models.CharField(max_length=255, blank=True, null=True, verbose_name=_('name'), help_text=_('Username'))
+    class UserType(models.TextChoices):
+        PERSONAL = 'personal', 'Pessoal'
+        EDUCATIONAL = 'educational', 'Educacional'
+        PROFESSIONAL = 'professional', 'Professional'
+
+    email = models.EmailField(
+        max_length=255, unique=True, verbose_name=_('email'), help_text=_('Email'))
+    name = models.CharField(
+        max_length=255, blank=True, null=True, verbose_name=_('name'), help_text=_('Username'))
+    user_type = models.CharField(
+        max_length=20,
+        choices=UserType.choices,
+        default=UserType.PERSONAL
+    )
+    profile_photo = models.ForeignKey(
+        Image,
+        related_name='+',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
     is_active = models.BooleanField(
         default=True, verbose_name=_('Usuário está ativo'), help_text=_('Indica que este usuário está ativo.')
     )

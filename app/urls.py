@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import (
@@ -12,10 +14,15 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from core.views import UserRegistrationView, UserViewSet
+from core.views import DesingViewSet, MessageViewSet, ModelViewSet, TemplateViewSet, UserRegistrationView, UserViewSet
+from uploader.router import router as uploader_router
 
 router = DefaultRouter()
 
+router.register(r'desings', DesingViewSet, basename='desings')
+router.register(r'templates', TemplateViewSet, basename='templates')
+router.register(r'menssagens', MessageViewSet, basename='menssagens')
+router.register(r'modelos', ModelViewSet, basename='modelos')
 router.register(r'usuarios', UserViewSet, basename='usuarios')
 
 urlpatterns = [
@@ -27,6 +34,7 @@ urlpatterns = [
         SpectacularSwaggerView.as_view(url_name='schema'),
         name='swagger-ui',
     ),
+    path('api/media/', include(uploader_router.urls)),
     path(
         'api/redoc/',
         SpectacularRedocView.as_view(url_name='schema'),
@@ -41,3 +49,5 @@ urlpatterns = [
     # API
     path('api/', include(router.urls)),
 ]
+
+urlpatterns += static(settings.MEDIA_ENDPOINT, document_root=settings.MEDIA_ROOT)
