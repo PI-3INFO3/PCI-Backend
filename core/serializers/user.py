@@ -7,6 +7,8 @@ from uploader.serializers import ImageSerializer
 
 
 class UserSerializer(ModelSerializer):
+    password = serializers.CharField(write_only=True, required=False, min_length=8)
+
     class Meta:
         model = User
         fields = ['id',
@@ -14,10 +16,12 @@ class UserSerializer(ModelSerializer):
                   'name',
                   'is_active',
                   'is_staff',
-                  'is_superuser', 'last_login',
+                  'is_superuser',
+                  'last_login',
                   'groups',
                   'profile_photo',
-                  'profile_photo_attachment_key', ]
+                  'profile_photo_attachment_key',
+                  'password']
         depth = 1
 
     profile_photo_attachment_key = SlugRelatedField(
@@ -31,6 +35,14 @@ class UserSerializer(ModelSerializer):
         required=False,
         read_only=True
     )
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        instance = super().update(instance, validated_data)
+        if password:
+            instance.set_password(password)
+            instance.save()
+        return instance
 
 
 class UserRegistrationSerializer(ModelSerializer):
