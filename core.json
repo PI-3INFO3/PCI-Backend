@@ -27,7 +27,7 @@
     "email": "marcoandre@gmail.com",
     "name": "Marco André Lopes Mendes",
     "user_type": "personal",
-    "profile_photo": 1,
+    "profile_photo": null,
     "created_at": "2026-04-17T15:57:48.256Z",
     "is_active": true,
     "is_staff": true,
