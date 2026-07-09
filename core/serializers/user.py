@@ -21,7 +21,8 @@ class UserSerializer(ModelSerializer):
                   'groups',
                   'profile_photo',
                   'profile_photo_attachment_key',
-                  'password']
+                  'password',
+                  'user_type']
         depth = 1
 
     profile_photo_attachment_key = SlugRelatedField(
