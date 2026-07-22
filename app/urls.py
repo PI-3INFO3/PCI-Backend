@@ -14,7 +14,15 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from core.views import DesingViewSet, MessageViewSet, ModelViewSet, TemplateViewSet, UserRegistrationView, UserViewSet
+from core.views import (
+    DesingViewSet,
+    FriendshipViewSet,
+    MessageViewSet,
+    ModelViewSet,
+    TemplateViewSet,
+    UserRegistrationView,
+    UserViewSet,
+)
 from uploader.router import router as uploader_router
 
 router = DefaultRouter()
@@ -24,6 +32,7 @@ router.register(r'templates', TemplateViewSet, basename='templates')
 router.register(r'menssagens', MessageViewSet, basename='menssagens')
 router.register(r'modelos', ModelViewSet, basename='modelos')
 router.register(r'usuarios', UserViewSet, basename='usuarios')
+router.register(r'amizades', FriendshipViewSet, basename='amizades')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
