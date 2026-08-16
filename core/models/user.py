@@ -42,6 +42,10 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     """User model in the system."""
 
+    class ThemeChoices(models.TextChoices):
+        LIGHT = 'Claro', 'Claro'
+        DARK = 'Escuro', 'Escuro'
+
     class UserType(models.TextChoices):
         PERSONAL = 'personal', 'Pessoal'
         EDUCATIONAL = 'educational', 'Educacional'
@@ -63,6 +67,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True,
         blank=True,
         default=None,
+    )
+    theme = models.CharField(
+        max_length=10,
+        choices=ThemeChoices.choices,
+        default=ThemeChoices.LIGHT,
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

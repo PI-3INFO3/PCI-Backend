@@ -22,6 +22,7 @@ class UserSerializer(ModelSerializer):
                   'profile_photo',
                   'profile_photo_attachment_key',
                   'password',
+                  'theme',
                   'user_type']
         depth = 1
 
