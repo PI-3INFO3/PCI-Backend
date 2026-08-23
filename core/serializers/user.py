@@ -39,12 +39,8 @@ class UserSerializer(ModelSerializer):
     )
 
     def update(self, instance, validated_data):
-        password = validated_data.pop('password', None)
-        instance = super().update(instance, validated_data)
-        if password:
-            instance.set_password(password)
-            instance.save()
-        return instance
+        validated_data.pop('password', None)
+        return super().update(instance, validated_data)
 
 
 class UserRegistrationSerializer(ModelSerializer):
@@ -56,3 +52,20 @@ class UserRegistrationSerializer(ModelSerializer):
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, required=True, min_length=8)
+
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Senha atual incorreta.')
+        return value
+
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user

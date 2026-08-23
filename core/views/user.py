@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from core.models import User
-from core.serializers import UserRegistrationSerializer, UserSerializer
+from core.serializers import ChangePasswordSerializer, UserRegistrationSerializer, UserSerializer
 
 
 class UserViewSet(ModelViewSet):
@@ -34,6 +34,20 @@ class UserViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Alterar senha",
+        description="Altera a senha do usuário autenticado, exigindo a senha atual.",
+        request=ChangePasswordSerializer,
+        responses={200: None, 400: None},
+    )
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def change_password(self, request):
+        """Altera a senha do usuário autenticado, após validar a senha atual."""
+        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': 'Senha alterada com sucesso.'}, status=status.HTTP_200_OK)
 
 
 class UserRegistrationView(CreateAPIView):
