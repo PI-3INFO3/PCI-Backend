@@ -1,3 +1,4 @@
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
@@ -22,7 +23,6 @@ class UserViewSet(ModelViewSet):
     )
     @action(detail=False, methods=['get', 'patch', 'put'], permission_classes=[IsAuthenticated])
     def me(self, request):
-        """Retorna ou atualiza os dados do usuário autenticado."""
         user = request.user
 
         if request.method == 'GET':
@@ -35,9 +35,17 @@ class UserViewSet(ModelViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def buscar(self, request):
+        """Busca usuários por nome ou email, excluindo o próprio usuário logado."""
+        termo = request.query_params.get('q', '')
+        usuarios = User.objects.filter(
+            Q(name__icontains=termo) | Q(email__icontains=termo)
+        ).exclude(id=request.user.id)[:20]
+        return Response(UserSerializer(usuarios, many=True).data)
+
 
 class UserRegistrationView(CreateAPIView):
-    """Endpoint para registro de novos usuários."""
 
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
@@ -49,6 +57,5 @@ class UserRegistrationView(CreateAPIView):
             self.perform_create(serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            # Aqui você vai ver exatamente o que deu errado
             print("ERROS DE VALIDAÇÃO:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
