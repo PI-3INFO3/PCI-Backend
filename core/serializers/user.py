@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer, SlugRelatedField
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from core.models import User
 from uploader.models import Image
@@ -23,7 +24,9 @@ class UserSerializer(ModelSerializer):
                   'profile_photo_attachment_key',
                   'password',
                   'theme',
-                  'user_type']
+                  'user_type',
+                  'email_verified']
+        read_only_fields = ['email_verified']
         depth = 1
 
     profile_photo_attachment_key = SlugRelatedField(
@@ -50,6 +53,14 @@ class UserRegistrationSerializer(ModelSerializer):
         model = User
         fields = ['id', 'email', 'name', 'password', 'user_type']
 
+    def validate_email(self, value):
+        existing = User.objects.filter(email=value).first()
+        if existing:
+            if existing.email_verified:
+                raise serializers.ValidationError('Este e-mail já está cadastrado.')
+            existing.delete()
+        return value
+
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
 
@@ -69,3 +80,25 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    codigo = serializers.CharField(max_length=6)
+
+
+class ResendCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class EmailVerifiedTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Login padrão, mas recusa gerar token se o e-mail não estiver verificado."""
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        if not self.user.email_verified:
+            raise serializers.ValidationError(
+                {'detail': 'Você precisa verificar seu e-mail antes de fazer login.'},
+                code='email_not_verified',
+            )
+        return data
