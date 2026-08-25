@@ -10,6 +10,7 @@
     "name": "Superusuário",
     "is_active": true,
     "is_staff": true,
+    "email_verified": true,
     "groups": [],
     "user_permissions": []
   }
@@ -25,6 +26,7 @@
     "name": "Marco André Lopes Mendes",
     "is_active": true,
     "is_staff": true,
+    "email_verified": true,
     "groups": [],
     "user_permissions": []
   }
