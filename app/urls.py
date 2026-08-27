@@ -9,6 +9,7 @@ from drf_spectacular.views import (
 )
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
     TokenRefreshView,
     TokenVerifyView,
 )
@@ -16,6 +17,7 @@ from rest_framework_simplejwt.views import (
 from core.serializers import EmailVerifiedTokenObtainPairSerializer
 from core.views import (
     DesingViewSet,
+    FriendshipViewSet,
     MessageViewSet,
     ModelViewSet,
     ResendVerificationCodeView,
@@ -25,7 +27,6 @@ from core.views import (
     VerifyEmailView,
 )
 from uploader.router import router as uploader_router
-from rest_framework_simplejwt.views import TokenObtainPairView
 
 
 class EmailVerifiedTokenObtainPairView(TokenObtainPairView):
@@ -41,6 +42,7 @@ router.register(r'templates', TemplateViewSet, basename='templates')
 router.register(r'menssagens', MessageViewSet, basename='menssagens')
 router.register(r'modelos', ModelViewSet, basename='modelos')
 router.register(r'usuarios', UserViewSet, basename='usuarios')
+router.register(r'amizades', FriendshipViewSet, basename='amizades')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

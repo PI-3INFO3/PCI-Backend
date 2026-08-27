@@ -170,4 +170,4 @@ poetry.toml
 # Ruff
 .ruff_cache/
 
-# End of https://www.toptal.com/developers/gitignore/api/python
+# End of https://www.toptal.com/developers/gitignore/api/pythondb.sqlite3
