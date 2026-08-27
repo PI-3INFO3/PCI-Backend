@@ -14,16 +14,26 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
+from core.serializers import EmailVerifiedTokenObtainPairSerializer
 from core.views import (
     DesingViewSet,
     FriendshipViewSet,
     MessageViewSet,
     ModelViewSet,
+    ResendVerificationCodeView,
     TemplateViewSet,
     UserRegistrationView,
     UserViewSet,
+    VerifyEmailView,
 )
 from uploader.router import router as uploader_router
+
+
+class EmailVerifiedTokenObtainPairView(TokenObtainPairView):
+    """Login JWT que exige e-mail verificado."""
+
+    serializer_class = EmailVerifiedTokenObtainPairSerializer
+
 
 router = DefaultRouter()
 
@@ -50,11 +60,13 @@ urlpatterns = [
         name='redoc',
     ),
     # Autenticação JWT
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/', EmailVerifiedTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
-    # Registro de usuários
+    # Registro e verificação de usuários
     path('api/registro/', UserRegistrationView.as_view(), name='user_registration'),
+    path('api/verificar-email/', VerifyEmailView.as_view(), name='verify_email'),
+    path('api/reenviar-codigo/', ResendVerificationCodeView.as_view(), name='resend_code'),
     # API
     path('api/', include(router.urls)),
 ]

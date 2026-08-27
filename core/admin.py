@@ -2,12 +2,17 @@
 Django admin customization.
 """
 
+from datetime import timedelta
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from core.models import Desing, Message, Model, Template, User
+
+UNVERIFIED_ACCOUNT_EXPIRY_HOURS = 24
 
 
 @admin.register(Desing)
@@ -51,9 +56,18 @@ class UserAdmin(BaseUserAdmin):
     """Define the admin pages for users."""
 
     ordering = ['id']
-    list_display = ['email', 'name', 'user_type', 'is_active', 'created_at', "get_profile_photo_preview"]
+    list_display = [
+        'email',
+        'name',
+        'user_type',
+        'is_active',
+        'email_verified',
+        'created_at',
+        'get_profile_photo_preview',
+    ]
     search_fields = ['email', 'name', 'created_at']
-    list_filter = ['is_active', 'is_staff', 'user_type']
+    list_filter = ['is_active', 'is_staff', 'user_type', 'email_verified']
+    actions = ['delete_expired_unverified']
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
@@ -68,12 +82,30 @@ class UserAdmin(BaseUserAdmin):
                 )
             },
         ),
+        (
+            _('Verificação de e-mail'),
+            {
+                'fields': (
+                    'email_verified',
+                    'verification_code',
+                    'verification_code_created_at',
+                    'verification_attempts',
+                )
+            },
+        ),
         (_('Important dates'), {'fields': ('last_login', 'created_at')}),
         (_('Groups'), {'fields': ('groups',)}),
         (_('User Permissions'), {'fields': ('user_permissions',)}),
     )
 
-    readonly_fields = ['last_login', 'created_at', 'get_profile_photo_preview']
+    readonly_fields = [
+        'last_login',
+        'created_at',
+        'get_profile_photo_preview',
+        'verification_code',
+        'verification_code_created_at',
+        'verification_attempts',
+    ]
 
     add_fieldsets = (
         (
@@ -89,8 +121,9 @@ class UserAdmin(BaseUserAdmin):
                     'is_active',
                     'is_staff',
                     'is_superuser',
-                    "profile_photo",
-                    "get_profile_photo_preview",
+                    'email_verified',
+                    'profile_photo',
+                    'get_profile_photo_preview',
                 ),
             },
         ),
@@ -105,3 +138,11 @@ class UserAdmin(BaseUserAdmin):
         return "Sem imagem"
 
     get_profile_photo_preview.short_description = "Pré-visualização da foto"
+
+    @admin.action(description='Excluir contas não verificadas há mais de 24h (ignora seleção)')
+    def delete_expired_unverified(self, request, queryset):
+        limite = timezone.now() - timedelta(hours=UNVERIFIED_ACCOUNT_EXPIRY_HOURS)
+        expiradas = User.objects.filter(email_verified=False, created_at__lt=limite)
+        total = expiradas.count()
+        expiradas.delete()
+        self.message_user(request, f'{total} conta(s) não verificada(s) removida(s).')
