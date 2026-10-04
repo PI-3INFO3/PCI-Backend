@@ -24,6 +24,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
 # Aplicações instaladas
 INSTALLED_APPS = [
     'django.contrib.admin',
