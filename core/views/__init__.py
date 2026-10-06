@@ -1,4 +1,4 @@
-from .desing import DesingViewSet
+from .design import DesignViewSet
 from .message import MessageViewSet
 from .model import ModelViewSet
 from .template import TemplateViewSet

@@ -16,7 +16,7 @@ from rest_framework_simplejwt.views import (
 
 from core.serializers import EmailVerifiedTokenObtainPairSerializer
 from core.views import (
-    DesingViewSet,
+    DesignViewSet,
     FriendshipViewSet,
     MessageViewSet,
     ModelViewSet,
@@ -37,7 +37,7 @@ class EmailVerifiedTokenObtainPairView(TokenObtainPairView):
 
 router = DefaultRouter()
 
-router.register(r'desings', DesingViewSet, basename='desings')
+router.register(r'designs', DesignViewSet, basename='designs')
 router.register(r'templates', TemplateViewSet, basename='templates')
 router.register(r'menssagens', MessageViewSet, basename='menssagens')
 router.register(r'modelos', ModelViewSet, basename='modelos')

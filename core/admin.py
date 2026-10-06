@@ -10,13 +10,13 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
-from core.models import Desing, Message, Model, Template, User
+from core.models import Design, Message, Model, Template, User
 
 UNVERIFIED_ACCOUNT_EXPIRY_HOURS = 24
 
 
-@admin.register(Desing)
-class DesingAdmin(admin.ModelAdmin):
+@admin.register(Design)
+class DesignAdmin(admin.ModelAdmin):
     list_display = ['created_at', 'name']
     search_fields = ['created_at', 'name']
     list_filter = ['created_at']
