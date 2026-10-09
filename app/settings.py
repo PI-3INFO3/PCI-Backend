@@ -19,10 +19,20 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure')
 DEBUG = os.getenv('DEBUG', 'False')
 ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
+    'https://soulcriativa.vercel.app',
     'http://localhost:3000',
+    'http://localhost:5173',
     'http://localhost:8000',
 ]
-CORS_ALLOW_ALL_ORIGINS = True
+
+# Permite que o frontend publicado acesse a API. Em produção, mantenha
+# apenas origens confiáveis nesta lista.
+CORS_ALLOWED_ORIGINS = [
+    'https://soulcriativa.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+]
+CORS_ALLOW_ALL_ORIGINS = False
 
 # Aplicações instaladas
 INSTALLED_APPS = [
@@ -44,10 +54,12 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Deve ser o primeiro middleware para que as respostas de erro/redirect
+    # do Django também recebam os cabeçalhos CORS quando aplicável.
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -139,20 +151,17 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
-# Tipo padrão de campo para chaves primárias
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Configurações do DRF e drf-spectacular (OpenAPI/Swagger)
 SPECTACULAR_SETTINGS = {
     'TITLE': '<PROJETO> API',
     'DESCRIPTION': 'API para o projeto <descreva aqui seu projeto>.',
     'VERSION': '1.0.0',
 }
 
-# Modelo de usuário personalizado
 AUTH_USER_MODEL = 'core.User'
 
-# Configurações do Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
     'DEFAULT_PAGINATION_CLASS': 'app.pagination.CustomPagination',
@@ -161,12 +170,11 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
-# Configurações do Simple JWT
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=180),  # Tokens de acesso expiram em 3 horas
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),  # Tokens de atualização expiram em 1 dia
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=180),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# Exibe as configurações principais para verificação
+
 print(f'{MODE = } \n{MEDIA_URL = } \n{DATABASES = }')
