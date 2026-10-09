@@ -1,5 +1,6 @@
 from .audit_log import AuditLog
 from .design import Design
+from .design_page import DesignPage
 from .element import Element
 from .font import Font
 from .template import Template
