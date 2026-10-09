@@ -1,7 +1,3 @@
-"""
-Django admin customization.
-"""
-
 from datetime import timedelta
 
 from django.contrib import admin
@@ -10,13 +6,20 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
-from core.models import Desing, Message, Model, Template, User
+from core.models import (
+    Design,
+    DesignPage,
+    Message,
+    Model,
+    Template,
+    User,
+)
 
 UNVERIFIED_ACCOUNT_EXPIRY_HOURS = 24
 
 
-@admin.register(Desing)
-class DesingAdmin(admin.ModelAdmin):
+@admin.register(Design)
+class DesignAdmin(admin.ModelAdmin):
     list_display = ['created_at', 'name']
     search_fields = ['created_at', 'name']
     list_filter = ['created_at']
@@ -133,11 +136,11 @@ class UserAdmin(BaseUserAdmin):
         if obj.profile_photo and obj.profile_photo.url:
             return format_html(
                 '<img src="{}" style="height: 80px; width: 80px; object-fit: cover; border-radius: 8px;" />',
-                obj.profile_photo.url
+                obj.profile_photo.url,
             )
-        return "Sem imagem"
+        return 'Sem imagem'
 
-    get_profile_photo_preview.short_description = "Pré-visualização da foto"
+    get_profile_photo_preview.short_description = 'Pré-visualização da foto'
 
     @admin.action(description='Excluir contas não verificadas há mais de 24h (ignora seleção)')
     def delete_expired_unverified(self, request, queryset):
@@ -146,3 +149,25 @@ class UserAdmin(BaseUserAdmin):
         total = expiradas.count()
         expiradas.delete()
         self.message_user(request, f'{total} conta(s) não verificada(s) removida(s).')
+
+    @admin.register(DesignPage)
+    class DesignPageAdmin(admin.ModelAdmin):
+        list_display = [
+            'name',
+            'design',
+            'page_order',
+            'width',
+            'height',
+        ]
+
+        list_filter = ['page_order']
+
+        search_fields = [
+            'name',
+            'design__name',
+        ]
+
+        ordering = [
+            'design_id',
+            'page_order',
+        ]

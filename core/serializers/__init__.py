@@ -1,4 +1,4 @@
-from .desing import DesingSerializer
+from .design import ElementSerializer, DesignSerializer, HistoryEntrySerializer
 from .message import MessageSerializer
 from .model import ModelSerializer
 from .template import TemplateSerializer
