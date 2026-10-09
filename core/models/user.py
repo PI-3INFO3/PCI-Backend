@@ -1,7 +1,3 @@
-"""
-Database models.
-"""
-
 import random
 
 from django.conf import settings
