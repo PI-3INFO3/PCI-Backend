@@ -14,7 +14,9 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from core.serializers import EmailVerifiedTokenObtainPairSerializer
+from core.serializers import (
+    EmailVerifiedTokenObtainPairSerializer,
+)
 from core.views import (
     DesignViewSet,
     FriendshipViewSet,
@@ -26,49 +28,145 @@ from core.views import (
     UserViewSet,
     VerifyEmailView,
 )
+from core.views.chunk_upload import (
+    ChunkedDesignUploadView,
+)
 from uploader.router import router as uploader_router
 
 
-class EmailVerifiedTokenObtainPairView(TokenObtainPairView):
+class EmailVerifiedTokenObtainPairView(
+    TokenObtainPairView
+):
     """Login JWT que exige e-mail verificado."""
 
-    serializer_class = EmailVerifiedTokenObtainPairSerializer
+    serializer_class = (
+        EmailVerifiedTokenObtainPairSerializer
+    )
 
 
 router = DefaultRouter()
 
-router.register(r'designs', DesignViewSet, basename='designs')
-router.register(r'templates', TemplateViewSet, basename='templates')
-router.register(r'menssagens', MessageViewSet, basename='menssagens')
-router.register(r'modelos', ModelViewSet, basename='modelos')
-router.register(r'usuarios', UserViewSet, basename='usuarios')
-router.register(r'amizades', FriendshipViewSet, basename='amizades')
+router.register(
+    r"designs",
+    DesignViewSet,
+    basename="designs",
+)
+
+router.register(
+    r"templates",
+    TemplateViewSet,
+    basename="templates",
+)
+
+router.register(
+    r"menssagens",
+    MessageViewSet,
+    basename="menssagens",
+)
+
+router.register(
+    r"modelos",
+    ModelViewSet,
+    basename="modelos",
+)
+
+router.register(
+    r"usuarios",
+    UserViewSet,
+    basename="usuarios",
+)
+
+router.register(
+    r"amizades",
+    FriendshipViewSet,
+    basename="amizades",
+)
+
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    # OpenAPI 3
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path(
-        'api/doc/',
-        SpectacularSwaggerView.as_view(url_name='schema'),
-        name='swagger-ui',
+        "admin/",
+        admin.site.urls,
     ),
-    path('api/media/', include(uploader_router.urls)),
+
     path(
-        'api/redoc/',
-        SpectacularRedocView.as_view(url_name='schema'),
-        name='redoc',
+        "api/schema/",
+        SpectacularAPIView.as_view(),
+        name="schema",
     ),
-    # Autenticação JWT
-    path('api/token/', EmailVerifiedTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
-    # Registro e verificação de usuários
-    path('api/registro/', UserRegistrationView.as_view(), name='user_registration'),
-    path('api/verificar-email/', VerifyEmailView.as_view(), name='verify_email'),
-    path('api/reenviar-codigo/', ResendVerificationCodeView.as_view(), name='resend_code'),
-    # API
-    path('api/', include(router.urls)),
+
+    path(
+        "api/doc/",
+        SpectacularSwaggerView.as_view(
+            url_name="schema",
+        ),
+        name="swagger-ui",
+    ),
+
+    path(
+        "api/media/",
+        include(uploader_router.urls),
+    ),
+
+    path(
+        "api/redoc/",
+        SpectacularRedocView.as_view(
+            url_name="schema",
+        ),
+        name="redoc",
+    ),
+
+    path(
+        "api/token/",
+        EmailVerifiedTokenObtainPairView.as_view(),
+        name="token_obtain_pair",
+    ),
+
+    path(
+        "api/token/refresh/",
+        TokenRefreshView.as_view(),
+        name="token_refresh",
+    ),
+
+    path(
+        "api/token/verify/",
+        TokenVerifyView.as_view(),
+        name="token_verify",
+    ),
+
+    path(
+        "api/registro/",
+        UserRegistrationView.as_view(),
+        name="user_registration",
+    ),
+
+    path(
+        "api/verificar-email/",
+        VerifyEmailView.as_view(),
+        name="verify_email",
+    ),
+
+    path(
+        "api/reenviar-codigo/",
+        ResendVerificationCodeView.as_view(),
+        name="resend_code",
+    ),
+
+    # Endpoint novo para receber o PPTX em partes pequenas.
+    path(
+        "api/designs/upload-chunk/",
+        ChunkedDesignUploadView.as_view(),
+        name="design-upload-chunk",
+    ),
+
+    path(
+        "api/",
+        include(router.urls),
+    ),
 ]
 
-urlpatterns += static(settings.MEDIA_ENDPOINT, document_root=settings.MEDIA_ROOT)
+
+urlpatterns += static(
+    settings.MEDIA_ENDPOINT,
+    document_root=settings.MEDIA_ROOT,
+)
