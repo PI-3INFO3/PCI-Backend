@@ -9,6 +9,7 @@ class Element(models.Model):
         TITLE = 'title', 'Título'
         IMAGE = 'image', 'Imagem'
         SHAPE = 'shape', 'Forma'
+        SYMBOL = 'symbol', 'Símbolo vetorial'
 
     class ShapeType(models.TextChoices):
         RECT = 'rect', 'Retângulo'
@@ -42,6 +43,13 @@ class Element(models.Model):
     color = models.CharField(
         max_length=20,
         blank=True,
+    )
+
+    rotation = models.FloatField(default=0)
+
+    symbol = models.ForeignKey(
+        'Symbol', on_delete=models.PROTECT, related_name='elements',
+        null=True, blank=True,
     )
 
     shape_type = models.CharField(
@@ -86,6 +94,8 @@ class Element(models.Model):
         default='normal',
     )
 
+    underline = models.BooleanField(default=False)
+
     text_align = models.CharField(
         max_length=30,
         blank=True,
@@ -118,6 +128,8 @@ class Element(models.Model):
 
     TRACKED_FIELDS = [
         'content',
+        'rotation',
+        'symbol_id',
         'posicao_x',
         'posicao_y',
         'width',
@@ -130,6 +142,7 @@ class Element(models.Model):
         'font_family',
         'font_weight',
         'font_style',
+        'underline',
         'text_align',
         'layer_order',
     ]

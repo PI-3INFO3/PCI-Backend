@@ -1,4 +1,11 @@
+import base64
+import binascii
+import math
+import re
+
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
+from django.db.models import Prefetch
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import (
@@ -8,16 +15,47 @@ from rest_framework.parsers import (
 )
 from rest_framework.response import Response
 
-from core.models import Design, DesignPage, Element
+from core.models import Design, DesignPage, Element, Symbol
+from core.models.editor_image import EditorImage
 from core.serializers.design import (
+    DesignPageSerializer,
     DesignSerializer,
+    DesignSummarySerializer,
+    ElementSerializer,
     HistoryEntrySerializer,
 )
 from core.services import history
+from core.services.editor_images import (
+    MAX_IMAGE_SIZE,
+    editor_image_url,
+    save_editor_image_once,
+)
 from core.services.file_import import (
     UnsupportedFileType,
     import_file_into_design,
 )
+
+
+def _decode_legacy_image_data(content):
+    """Valida e converte uma Data URL de imagem em arquivo temporário."""
+    header, encoded = content.split(",", 1)
+
+    if not re.fullmatch(
+        r"data:image/(?:png|jpeg|jpg|webp);base64",
+        header,
+        flags=re.I,
+    ):
+        raise ValueError("Data URL inválida.")
+
+    if len(encoded) > MAX_IMAGE_SIZE * 4 // 3 + 8:
+        raise ValueError("Imagem acima do limite de 15 MB.")
+
+    raw = base64.b64decode(encoded, validate=True)
+    return SimpleUploadedFile(
+        "imagem-legada.png",
+        raw,
+        content_type=header[5:].split(";")[0],
+    )
 
 
 class DesignViewSet(viewsets.ModelViewSet):
@@ -43,7 +81,42 @@ class DesignViewSet(viewsets.ModelViewSet):
                 importante=importante.lower() == "true"
             )
 
+        if (
+            self.action in {"retrieve", "create_page", "update_page", "delete_page"}
+            and self.request.query_params.get("summary") != "1"
+        ):
+            queryset = queryset.prefetch_related(
+                Prefetch("pages", queryset=DesignPage.objects.prefetch_related(
+                    Prefetch(
+                        "elements",
+                        queryset=Element.objects.select_related("symbol"),
+                    )
+                ))
+            )
+        elif self.action == "retrieve":
+            queryset = queryset.prefetch_related("pages")
         return queryset
+
+    def retrieve(self, request, *args, **kwargs):
+        design = self.get_object()
+        if request.query_params.get("summary") == "1":
+            return Response(DesignSummarySerializer(design).data)
+        return Response(self.get_serializer(design).data)
+
+    @action(detail=True, methods=["get"], url_path="page")
+    def page_detail(self, request, pk=None):
+        design = self.get_object()
+        try:
+            page_id = int(request.query_params.get("page_id", ""))
+            page = design.pages.prefetch_related(
+                Prefetch("elements", queryset=Element.objects.select_related("symbol"))
+            ).get(id=page_id)
+        except (TypeError, ValueError, DesignPage.DoesNotExist):
+            return Response(
+                {"error": "Página não encontrada neste design."},
+                status=404,
+            )
+        return Response(DesignPageSerializer(page).data)
 
     def perform_create(self, serializer):
         design = serializer.save(
@@ -123,10 +196,9 @@ class DesignViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer = self.get_serializer(design)
-
+        # O conteúdo de todos os slides fica no banco; envia só metadados.
         return Response(
-            serializer.data,
+            DesignSummarySerializer(design).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -294,7 +366,10 @@ class DesignViewSet(viewsets.ModelViewSet):
                     font_family=source.font_family,
                     font_weight=source.font_weight,
                     font_style=source.font_style,
+                    underline=source.underline,
                     text_align=source.text_align,
+                    rotation=source.rotation,
+                    symbol=source.symbol,
                     layer_order=source.layer_order,
                 )
 
@@ -587,31 +662,30 @@ class DesignViewSet(viewsets.ModelViewSet):
 
         maintained_ids = set()
 
+        if not self._symbols_exist(incoming_elements):
+            return Response(
+                {"error": "Um dos símbolos não existe."},
+                status=400,
+            )
+
+        image_error = self._prepare_editor_images(
+            incoming_elements,
+            request.user,
+        )
+        if image_error is not None:
+            return image_error
+
         for element_data in incoming_elements:
             if not isinstance(element_data, dict):
                 continue
 
             element = self._find_existing_element(
-                element_data,
-                elements_by_id,
-                elements_by_client_id,
+                element_data, elements_by_id, elements_by_client_id,
             )
-
             if element is None:
-                element = self._create_element(
-                    design,
-                    page,
-                    element_data,
-                    context,
-                )
-
+                element = self._create_element(design, page, element_data, context)
             else:
-                self._update_element(
-                    element,
-                    element_data,
-                    context,
-                )
-
+                self._update_element(element, element_data, context)
             maintained_ids.add(element.id)
 
         self._delete_removed_elements(
@@ -620,11 +694,68 @@ class DesignViewSet(viewsets.ModelViewSet):
             context,
         )
 
-        design.refresh_from_db()
+        # Evita transferir todos os slides em cada autosave.
+        # Devolve somente a página modificada.
+        return Response({
+            "page_id": page.id,
+            "elements": ElementSerializer(
+                page.elements.select_related("symbol").order_by("layer_order", "id"),
+                many=True,
+            ).data,
+        })
 
-        serializer = self.get_serializer(design)
+    @classmethod
+    def _symbols_exist(cls, incoming_elements):
+        """Confere referências de símbolos antes de modificar elementos."""
+        symbol_ids = {
+            cls._to_int_or_none(data.get("symbol"))
+            for data in incoming_elements
+            if isinstance(data, dict) and data.get("symbol")
+        }
+        valid_ids = set(
+            Symbol.objects.filter(id__in=symbol_ids).values_list(
+                "id",
+                flat=True,
+            )
+        )
+        return valid_ids == symbol_ids
 
-        return Response(serializer.data)
+    @staticmethod
+    def _prepare_editor_images(incoming_elements, owner):
+        """Valida arquivos privados e migra Data URLs legadas."""
+        for element_data in incoming_elements:
+            if (
+                not isinstance(element_data, dict)
+                or element_data.get("type") != "image"
+            ):
+                continue
+
+            content = element_data.get("content") or ""
+            private_match = re.search(
+                r"/api/editor-images/(\d+)/content/?$",
+                content,
+            )
+            if private_match:
+                if not EditorImage.objects.filter(
+                    owner=owner,
+                    pk=int(private_match.group(1)),
+                ).exists():
+                    return Response(
+                        {"error": "Imagem não pertence ao usuário."},
+                        status=400,
+                    )
+            elif content.startswith("data:image/"):
+                try:
+                    uploaded = _decode_legacy_image_data(content)
+                    image, _ = save_editor_image_once(uploaded, owner)
+                    element_data["content"] = editor_image_url(image)
+                except (ValueError, binascii.Error, TypeError) as exc:
+                    return Response(
+                        {"error": f"Imagem base64 inválida: {exc}"},
+                        status=400,
+                    )
+
+        return None
 
     @staticmethod
     def _get_target_page(design, page_id=None):
@@ -744,7 +875,17 @@ class DesignViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _element_fields(element_data):
+        symbol = DesignViewSet._to_int_or_none(element_data.get("symbol"))
+        rotation = element_data.get("rotation", 0)
+        try:
+            rotation = float(rotation)
+        except (TypeError, ValueError):
+            rotation = 0
+        if not math.isfinite(rotation):
+            rotation = 0
         return {
+            "rotation": rotation % 360,
+            "symbol_id": symbol,
             "type": element_data.get(
                 "type",
                 "text",
@@ -794,6 +935,7 @@ class DesignViewSet(viewsets.ModelViewSet):
                 "font_style",
                 "normal",
             ),
+            "underline": bool(element_data.get("underline", False)),
             "text_align": element_data.get(
                 "text_align",
                 "left",

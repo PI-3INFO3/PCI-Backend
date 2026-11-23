@@ -1,19 +1,20 @@
 import os
 import tempfile
 
-import fitz
+import pymupdf as fitz
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
 
 from core.models import DesignPage, Element
 from core.services import history
+from core.services.editor_images import editor_image_url, save_editor_image_once
 from core.services.extractors.ocr import extract_with_ocr
 from core.services.extractors.pdf import (
     extract_pdf,
     pdf_has_extractable_text,
 )
-from core.services.extractors.pptx import extract_pptx_pages
-from uploader.models import Image
+from core.services.extractors.powerpoint import extract_pptx_pages
+from core.services.symbols import get_or_create_path_symbol, get_or_create_symbol
 
 SUPPORTED_EXTENSIONS = {
     ".pptx",
@@ -111,7 +112,7 @@ def _extract_pages(tmp_path, ext):
     )
 
 
-def _salvar_imagem_extraida(raw, design):
+def _salvar_imagem_extraida(raw, design, user):
     """Salva uma imagem extraída e devolve sua URL."""
     extension = raw.get("image_ext") or "png"
     content_type = EXTENSION_TO_CONTENT_TYPE.get(
@@ -125,13 +126,11 @@ def _salvar_imagem_extraida(raw, design):
         content_type=content_type,
     )
 
-    asset = Image(
-        description=f"Elemento extraído do design {design.id}"
+    asset, _ = save_editor_image_once(
+        arquivo_upload, owner=user,
+        description=f"Imagem importada do design {design.id}",
     )
-    asset.file = arquivo_upload
-    asset.save()
-
-    return asset.url
+    return editor_image_url(asset)
 
 
 def _normalizar_tipo_forma(raw):
@@ -151,7 +150,7 @@ def _normalizar_tipo_forma(raw):
     return shape_type
 
 
-def _create_element(raw, design, page, layer_order):
+def _create_element(raw, design, page, layer_order, user):
     """Cria um elemento e persiste seus atributos editáveis."""
     element_type = raw.get("type", Element.ElementType.TEXT)
     content = raw.get("content", "")
@@ -159,11 +158,26 @@ def _create_element(raw, design, page, layer_order):
     if element_type == Element.ElementType.IMAGE:
         image_bytes = raw.get("image_bytes")
         if image_bytes:
-            content = _salvar_imagem_extraida(raw, design)
+            content = _salvar_imagem_extraida(raw, design, user)
 
     shape_type = None
     if element_type == Element.ElementType.SHAPE:
         shape_type = _normalizar_tipo_forma(raw)
+
+    symbol = None
+    if element_type == Element.ElementType.SYMBOL:
+        key = raw.get("symbol_key")
+        path_data = raw.get("symbol_path_data")
+        if path_data:
+            symbol = get_or_create_path_symbol(raw.get("symbol_name"), path_data)
+        elif key in {
+            "balao", "nuvem", "coracao", "raio",
+            "seta", "losango", "hexagono",
+        }:
+            symbol = get_or_create_symbol(key)
+        else:
+            # Geometria desconhecida: não atribuir uma imagem/retângulo fictício.
+            return None
 
     font_size = raw.get("fontSize")
     if font_size is not None:
@@ -180,12 +194,15 @@ def _create_element(raw, design, page, layer_order):
         heigth=max(int(raw.get("heigth") or 1), 1),
         color=raw.get("color") or "",
         shape_type=shape_type,
+        symbol=symbol,
+        rotation=float(raw.get("rotation") or 0) % 360,
         stroke_width=raw.get("stroke_width") or 0,
         stroke_color=raw.get("stroke_color") or "",
         font_size=font_size,
         font_family=raw.get("font_family") or "Poppins",
         font_weight=raw.get("font_weight") or "normal",
         font_style=raw.get("font_style") or "normal",
+        underline=bool(raw.get("underline", False)),
         text_align=raw.get("text_align") or "left",
         layer_order=layer_order,
     )
@@ -263,7 +280,11 @@ def import_file_into_design(uploaded_file, design, user):
                 design,
                 page,
                 layer_order,
+                user,
             )
+
+            if element is None:
+                continue
 
             _log_element_creation(
                 context,
