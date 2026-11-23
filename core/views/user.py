@@ -24,6 +24,13 @@ MAX_VERIFICATION_ATTEMPTS = 5
 class UserViewSet(ModelViewSet):
     queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
+
+    def get_queryset(self):
+        # O chat pode consultar perfis, mas uma conta nunca pode editar/apagar
+        # os dados de outra conta autenticada.
+        if self.action in {'update', 'partial_update', 'destroy', 'list'}:
+            return User.objects.filter(pk=self.request.user.pk)
+        return super().get_queryset()
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -31,16 +38,23 @@ class UserViewSet(ModelViewSet):
         description="Retorna ou atualiza os dados do usuário autenticado.",
         responses={200: UserSerializer, 401: None},
     )
-    @action(detail=False, methods=['get', 'patch', 'put'], permission_classes=[IsAuthenticated])
+    @action(
+        detail=False,
+        methods=['get', 'patch', 'put'],
+        permission_classes=[IsAuthenticated],
+    )
     def me(self, request):
         user = request.user
 
         if request.method == 'GET':
-            serializer = UserSerializer(user)
+            serializer = UserSerializer(user, context={"request": request})
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         partial = request.method == 'PATCH'
-        serializer = UserSerializer(user, data=request.data, partial=partial)
+        serializer = UserSerializer(
+            user, data=request.data, partial=partial,
+            context={"request": request},
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -52,7 +66,11 @@ class UserViewSet(ModelViewSet):
         usuarios = User.objects.filter(
             Q(name__icontains=termo) | Q(email__icontains=termo)
         ).exclude(id=request.user.id)[:20]
-        return Response(UserSerializer(usuarios, many=True).data)
+        return Response(
+            UserSerializer(
+                usuarios, many=True, context={"request": request}
+            ).data
+        )
 
     @extend_schema(
         summary="Alterar senha",
@@ -63,10 +81,15 @@ class UserViewSet(ModelViewSet):
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def change_password(self, request):
         """Altera a senha do usuário autenticado, após validar a senha atual."""
-        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
+        serializer = ChangePasswordSerializer(
+            data=request.data, context={'request': request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response({'detail': 'Senha alterada com sucesso.'}, status=status.HTTP_200_OK)
+        return Response(
+            {'detail': 'Senha alterada com sucesso.'},
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserRegistrationView(CreateAPIView):
@@ -95,7 +118,10 @@ class VerifyEmailView(APIView):
 
     permission_classes = [AllowAny]
 
-    @extend_schema(request=VerifyEmailSerializer, responses={200: None, 400: None, 404: None})
+    @extend_schema(
+        request=VerifyEmailSerializer,
+        responses={200: None, 400: None, 404: None},
+    )
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -105,10 +131,16 @@ class VerifyEmailView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({'detail': 'Usuário não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'detail': 'Usuário não encontrado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         if user.email_verified:
-            return Response({'detail': 'E-mail já verificado.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'E-mail já verificado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if user.verification_attempts >= MAX_VERIFICATION_ATTEMPTS:
             return Response(
@@ -117,12 +149,18 @@ class VerifyEmailView(APIView):
             )
 
         if user.is_code_expired():
-            return Response({'detail': 'Código expirado. Solicite um novo.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'Código expirado. Solicite um novo.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if user.verification_code != codigo:
             user.verification_attempts += 1
             user.save(update_fields=['verification_attempts'])
-            return Response({'detail': 'Código inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'Código inválido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         user.email_verified = True
         user.verification_code = None
@@ -141,7 +179,10 @@ class ResendVerificationCodeView(APIView):
 
     permission_classes = [AllowAny]
 
-    @extend_schema(request=ResendCodeSerializer, responses={200: None, 400: None, 404: None})
+    @extend_schema(
+        request=ResendCodeSerializer,
+        responses={200: None, 400: None, 404: None},
+    )
     def post(self, request):
         serializer = ResendCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -150,10 +191,16 @@ class ResendVerificationCodeView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({'detail': 'Usuário não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'detail': 'Usuário não encontrado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         if user.email_verified:
-            return Response({'detail': 'E-mail já verificado.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'E-mail já verificado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         user.send_verification_email()
         return Response({'detail': 'Novo código enviado.'}, status=status.HTTP_200_OK)

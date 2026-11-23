@@ -19,7 +19,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.models import Design
-from core.serializers.design import DesignSerializer
+from core.serializers.design import DesignSummarySerializer
 from core.services import history
 from core.services.file_import import (
     UnsupportedFileType,
@@ -28,7 +28,7 @@ from core.services.file_import import (
 
 logger = logging.getLogger(__name__)
 
-CHUNK_SIZE_LIMIT = 128 * 1024
+CHUNK_SIZE_LIMIT = 512 * 1024
 MAX_CHUNKS = 10_000
 MAX_FILE_SIZE = 500 * 1024 * 1024
 UPLOAD_EXPIRY_SECONDS = 6 * 60 * 60
@@ -71,7 +71,11 @@ def _read_status(upload_dir):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return {"state": "failed", "complete": True, "error": "Não foi possível ler o estado do processamento."}
+        return {
+            "state": "failed",
+            "complete": True,
+            "error": "Não foi possível ler o estado do processamento.",
+        }
 
 
 def _cleanup_expired_uploads(user_id):
@@ -82,7 +86,10 @@ def _cleanup_expired_uploads(user_id):
     now = time.time()
     for directory in user_root.iterdir():
         try:
-            expired = directory.is_dir() and now - directory.stat().st_mtime > UPLOAD_EXPIRY_SECONDS
+            expired = (
+                directory.is_dir()
+                and now - directory.stat().st_mtime > UPLOAD_EXPIRY_SECONDS
+            )
         except OSError:
             continue
         if expired:
@@ -122,7 +129,7 @@ def _parse_request(request):
     if chunk is None or chunk.size <= 0:
         raise UploadRequestError("Parte do arquivo ausente ou vazia.")
     if chunk.size > CHUNK_SIZE_LIMIT:
-        raise UploadRequestError("A parte enviada excede 128 KB.")
+        raise UploadRequestError("A parte enviada excede 512 KB.")
     if count < 1 or count > MAX_CHUNKS or index < 0 or index >= count:
         raise UploadRequestError("Índice ou quantidade de partes inválido.")
     if total_size <= 0 or total_size > MAX_FILE_SIZE:
@@ -189,7 +196,8 @@ def _assemble_file(upload_dir, metadata):
 
     if size != metadata.total_size:
         raise UploadRequestError(
-            f"Tamanho reconstruído incorreto: esperado {metadata.total_size}, recebido {size}."
+            f"Tamanho reconstruído incorreto: esperado "
+            f"{metadata.total_size}, recebido {size}."
         )
     return target
 
@@ -213,7 +221,7 @@ def _import_design(file_path, file_name, user_id):
         with file_path.open("rb") as source:
             import_file_into_design(File(source, name=file_name), design, user)
 
-        serialized = DesignSerializer(design).data
+        serialized = DesignSummarySerializer(design).data
         return json.loads(JSONRenderer().render(serialized))
 
 
@@ -302,7 +310,9 @@ def _handle_chunk(request):
 
     # Se já está processando ou terminou, não reinicie o trabalho.
     existing_status = _read_status(upload_dir)
-    if existing_status and existing_status.get("state") in {"processing", "complete", "failed"}:
+    if existing_status and existing_status.get("state") in {
+        "processing", "complete", "failed",
+    }:
         return existing_status, status.HTTP_200_OK
 
     _store_chunk(upload_dir, metadata, chunk)

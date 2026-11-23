@@ -18,28 +18,29 @@ def get_current_ip():
 
 
 # Função para atualizar o arquivo .env com o novo IP
+def _write_current_ip(ip):
+    if not os.path.isfile('.env'):
+        with open('.env', 'w', encoding='utf-8') as new_file:
+            new_file.write(f'MY_IP={ip}\n')
+        return
+
+    with open('.env', 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+
+    with open('.env', 'w', encoding='utf-8') as file:
+        for line in lines:
+            if not line.startswith('MY_IP='):
+                file.write(line)
+        file.write(f'MY_IP={ip}\n')
+
+
 def update_env_file(ip):
     try:
-        # Verifica se o arquivo .env existe
-        if not os.path.isfile('.env'):
-            # Cria o arquivo .env se ele não existir
-            with open('.env', 'w', encoding='utf-8') as new_file:
-                new_file.write(f'MY_IP={ip}\n')
-        else:
-            with open('.env', 'r', encoding='utf-8') as file:
-                lines = file.readlines()
-
-            with open('.env', 'w', encoding='utf-8') as file:
-                for line in lines:
-                    if line.startswith('MY_IP='):
-                        continue
-                    else:
-                        file.write(line)
-                file.write(f'MY_IP={ip}\n')
-
+        _write_current_ip(ip)
+    except OSError as exc:
+        print(f'Erro ao atualizar o arquivo .env: {exc}')
+    else:
         print(f'IP atualizado no arquivo .env: MY_IP={ip}')
-    except Exception as e:
-        print(f'Erro ao atualizar o arquivo .env: {e}')
 
 
 # Função principal
