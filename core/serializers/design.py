@@ -4,6 +4,17 @@ from core.models import AuditLog, Design, DesignPage, Element
 
 
 class ElementSerializer(serializers.ModelSerializer):
+    symbol_data = serializers.SerializerMethodField()
+
+    def get_symbol_data(self, obj):
+        if obj.symbol_id and obj.symbol:
+            return {
+                "id": obj.symbol_id,
+                "name": obj.symbol.name,
+                "path_data": obj.symbol.path_data,
+            }
+        return None
+
     class Meta:
         model = Element
 
@@ -11,6 +22,9 @@ class ElementSerializer(serializers.ModelSerializer):
             "id",
             "client_id",
             "type",
+            "rotation",
+            "symbol",
+            "symbol_data",
             "content",
             "posicao_x",
             "posicao_y",
@@ -24,12 +38,14 @@ class ElementSerializer(serializers.ModelSerializer):
             "font_family",
             "font_weight",
             "font_style",
+            "underline",
             "text_align",
             "layer_order",
         ]
 
         read_only_fields = [
             "id",
+            "symbol_data",
         ]
 
 
@@ -61,16 +77,10 @@ class DesignSerializer(serializers.ModelSerializer):
     pages = DesignPageSerializer(many=True, read_only=True)
 
     def get_elements(self, obj):
-        first_page = obj.pages.order_by(
-            "page_order",
-            "id",
-        ).first()
+        first_page = next(iter(obj.pages.all()), None)
 
         if first_page is not None:
-            elements = first_page.elements.order_by(
-                "layer_order",
-                "id",
-            )
+            elements = first_page.elements.all()
 
             return ElementSerializer(
                 elements,
@@ -132,3 +142,18 @@ class HistoryEntrySerializer(serializers.ModelSerializer):
             "user_name",
             "created_at",
         ]
+
+
+class PageMetadataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DesignPage
+        fields = ["id", "name", "page_order", "width", "height", "background_color"]
+
+
+class DesignSummarySerializer(serializers.ModelSerializer):
+    pages = PageMetadataSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Design
+        fields = ["id", "name", "created_by", "created_at", "importante", "pages"]
+        read_only_fields = fields

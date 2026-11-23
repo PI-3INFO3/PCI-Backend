@@ -3,6 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,9 +13,17 @@ MODE = os.getenv('MODE')
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure')
-DEBUG = os.getenv('DEBUG', 'False')
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = os.getenv('SECRET_KEY', '')
+if not SECRET_KEY:
+    if MODE == 'DEVELOPMENT':
+        SECRET_KEY = 'django-insecure-development-only'
+    else:
+        raise ImproperlyConfigured('SECRET_KEY deve ser configurada em produção.')
+DEBUG = os.getenv('DEBUG', 'False').strip().lower() in {'1', 'true', 'yes'}
+ALLOWED_HOSTS = os.getenv(
+    'ALLOWED_HOSTS',
+    'localhost,127.0.0.1,pci.class.fabricadesoftware.ifc.edu.br',
+).split(',')
 CSRF_TRUSTED_ORIGINS = [
     'https://soulcriativa.vercel.app',
     'http://localhost:3000',
@@ -89,7 +98,7 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': ('django.contrib.auth.password_validation.UserAttributeSimilarityValidator'),
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
@@ -111,6 +120,12 @@ STATIC_URL = 'static/'
 
 MEDIA_ENDPOINT = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+# Em produção, defina esta variável apontando para um volume persistente.
+# Não deve estar dentro de MEDIA_ROOT nem ser exposto por servidor estático.
+PRIVATE_EDITOR_MEDIA_ROOT = os.getenv(
+    'PRIVATE_EDITOR_MEDIA_ROOT',
+    str(BASE_DIR / 'private_media'),
+)
 FILE_UPLOAD_PERMISSIONS = 0o640
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
@@ -152,7 +167,7 @@ AUTH_USER_MODEL = 'core.User'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
     'DEFAULT_PAGINATION_CLASS': 'app.pagination.CustomPagination',
-    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated', ),
+    'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'PAGE_SIZE': 10,
 }
@@ -162,5 +177,3 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
-
-print(f'{MODE = } \n{MEDIA_URL = } \n{DATABASES = }')

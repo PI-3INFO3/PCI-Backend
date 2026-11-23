@@ -34,9 +34,9 @@ license = { text = "MIT" }
 
 [dependency-groups]
 dev = [
-  "pylint>=3.0.2",
-  "ipython>=8.26.0",
-  "ruff>=0.11.2",
+    "pylint>=3.0.2",
+    "ipython>=8.26.0",
+    "ruff>=0.15.14",
 ]
 
 [tool.pdm.scripts]

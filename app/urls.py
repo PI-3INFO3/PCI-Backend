@@ -19,10 +19,12 @@ from core.serializers import (
 )
 from core.views import (
     DesignViewSet,
+    EditorImageViewSet,
     FriendshipViewSet,
     MessageViewSet,
     ModelViewSet,
     ResendVerificationCodeView,
+    SymbolViewSet,
     TemplateViewSet,
     UserRegistrationView,
     UserViewSet,
@@ -45,6 +47,8 @@ class EmailVerifiedTokenObtainPairView(
 
 
 router = DefaultRouter()
+router.register(r"symbols", SymbolViewSet, basename="symbols")
+router.register(r"editor-images", EditorImageViewSet, basename="editor-images")
 
 router.register(
     r"designs",

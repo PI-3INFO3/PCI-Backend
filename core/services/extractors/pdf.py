@@ -1,4 +1,4 @@
-import fitz
+import pymupdf as fitz
 
 TITLE_FONT_SIZE_THRESHOLD = 20
 POINTS_PER_INCH = 72
